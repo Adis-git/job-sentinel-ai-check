@@ -25,7 +25,7 @@ const Index = () => {
     // Check if we're running in a Chrome extension context
     const isExtensionEnv = typeof chrome !== "undefined" && 
                           typeof chrome.runtime !== "undefined" && 
-                          typeof chrome.runtime.id !== "undefined";
+                          chrome.runtime.getManifest !== undefined;
     
     setIsExtension(!!isExtensionEnv);
 
