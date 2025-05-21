@@ -9,6 +9,12 @@ import { reportJobPosting } from "@/services/reportingService";
 import { toast } from "@/hooks/use-toast";
 import { AlertCircle, CheckCircle, AlertTriangle, Info, Loader2 } from "lucide-react";
 
+interface AnalysisResult {
+  score: number;
+  analysis: string;
+  redFlags: string[];
+}
+
 interface JobData {
   title: string;
   company: string;
@@ -16,12 +22,7 @@ interface JobData {
   location: string;
   salary?: string;
   url: string;
-}
-
-interface AnalysisResult {
-  score: number;
-  analysis: string;
-  redFlags: string[];
+  analysisResult?: AnalysisResult;
 }
 
 interface JobValidatorProps {
