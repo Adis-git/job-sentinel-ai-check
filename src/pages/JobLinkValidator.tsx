@@ -1,8 +1,10 @@
+
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import JobValidator from "@/components/JobValidator";
 import { toast } from "@/hooks/use-toast";
 import { 
@@ -11,7 +13,8 @@ import {
   Key, 
   AlertTriangle, 
   Loader2,
-  CheckCircle
+  CheckCircle,
+  Search
 } from "lucide-react";
 import { 
   analyzeJobUrl,
@@ -33,6 +36,7 @@ const JobLinkValidator = () => {
   const [isValidInput, setIsValidInput] = useState<boolean | null>(null);
   const [isJobSite, setIsJobSite] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [analysisStage, setAnalysisStage] = useState<string>("");
   const [jobData, setJobData] = useState<any>(null);
   const [error, setError] = useState<string>("");
   const [apiKey, setApiKey] = useState<string>(localStorage.getItem("openai_api_key") || "");
@@ -76,10 +80,10 @@ const JobLinkValidator = () => {
     if (!isJob) {
       toast({
         title: "Not a Job Site",
-        description: "This URL doesn't appear to be a job posting",
-        variant: "destructive",
+        description: "This URL doesn't appear to be a job posting. Analysis may be limited.",
+        variant: "warning",
       });
-      return false;
+      // We'll continue anyway since our improved detection might still work
     }
     
     return true;
@@ -104,11 +108,24 @@ const JobLinkValidator = () => {
       setError("");
       setJobData(null);
       
+      // Show analysis stages
+      setAnalysisStage("Validating URL format");
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      setAnalysisStage("Checking job posting URL patterns");
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      setAnalysisStage("Preparing to analyze job content");
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      setAnalysisStage("Analyzing job posting with AI");
+      
       // Get analysis from the URL
       const result = await analyzeJobUrl(jobUrl);
       
       setJobData(result.jobData);
       setIsLoading(false);
+      setAnalysisStage("");
       
       toast({
         title: "Analysis Complete",
@@ -117,6 +134,7 @@ const JobLinkValidator = () => {
       
     } catch (err) {
       setIsLoading(false);
+      setAnalysisStage("");
       const errorMessage = (err as Error).message || "Failed to analyze job URL";
       setError(errorMessage);
       toast({
@@ -193,7 +211,7 @@ const JobLinkValidator = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <LinkIcon size={20} />
-            <span>Job URL Validation</span>
+            <span>Job URL Analysis</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -215,13 +233,18 @@ const JobLinkValidator = () => {
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Analyzing...
+                      {analysisStage || "Analyzing..."}
                     </>
-                  ) : "Analyze URL"}
+                  ) : (
+                    <>
+                      <Search className="mr-2 h-4 w-4" />
+                      Analyze URL
+                    </>
+                  )}
                 </Button>
               </div>
               <p className="text-sm text-gray-500">
-                Paste any job posting URL to analyze its legitimacy
+                Paste any job posting URL to analyze its legitimacy. Works with LinkedIn, Indeed, Glassdoor, and other job sites.
               </p>
               
               {/* URL Validation Status */}
@@ -251,7 +274,7 @@ const JobLinkValidator = () => {
                   <span className="text-sm">
                     {isJobSite 
                       ? "Recognized as a job posting URL" 
-                      : "This doesn't appear to be a job posting URL. Analysis may be limited."}
+                      : "This doesn't appear to be a job posting URL. We'll still try to analyze it."}
                   </span>
                 </div>
               )}
@@ -263,6 +286,21 @@ const JobLinkValidator = () => {
                 </div>
               )}
             </div>
+            
+            {isLoading && analysisStage && (
+              <div className="mt-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">{analysisStage}</span>
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  </div>
+                  <Progress value={45} className="h-1.5" />
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  AI analysis typically takes 30-60 seconds. We're using advanced AI to review the job posting.
+                </p>
+              </div>
+            )}
             
             {error && (
               <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-md">
@@ -280,8 +318,8 @@ const JobLinkValidator = () => {
         <Card className="mb-6">
           <CardContent className="flex flex-col items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-            <p className="text-center text-gray-500">Analyzing job URL...</p>
-            <p className="text-center text-gray-400 text-sm mt-2">This may take a few moments</p>
+            <p className="text-center text-gray-700 font-medium">Analyzing job URL...</p>
+            <p className="text-center text-gray-500 text-sm mt-2">{analysisStage || "This may take a few moments"}</p>
           </CardContent>
         </Card>
       ) : null}

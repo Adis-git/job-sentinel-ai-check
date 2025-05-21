@@ -13,10 +13,8 @@ import {
   AlertTriangle, 
   Info, 
   Loader2, 
-  User, 
   Flag, 
-  Link as LinkIcon, 
-  TrendingUp,
+  Link as LinkIcon,
   Search,
   X
 } from "lucide-react";
@@ -154,6 +152,12 @@ const JobValidator = ({ jobData, currentUrl }: JobValidatorProps) => {
     return <AlertCircle className="text-red-500 h-6 w-6" />;
   };
 
+  const getScoreText = (score: number) => {
+    if (score >= 80) return "Likely Legitimate";
+    if (score >= 60) return "Exercise Caution";
+    return "Potentially Fraudulent";
+  };
+
   const retryAnalysis = () => {
     setAnalyzing(true);
     setError(null);
@@ -163,32 +167,57 @@ const JobValidator = ({ jobData, currentUrl }: JobValidatorProps) => {
   };
 
   return (
-    <div className="p-4 max-w-md mx-auto">
+    <div className="space-y-6 max-w-3xl mx-auto">
       <Card className="shadow-md">
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-xl">Job Safety Analysis</CardTitle>
+            <CardTitle className="text-xl font-bold">Job Safety Analysis</CardTitle>
             {score !== null && !analyzing && !error && (
-              <Badge variant="outline" className="text-sm">
+              <Badge variant={score >= 80 ? "outline" : "destructive"} className="text-sm ml-2 py-1.5">
                 {getScoreIcon(score)}
-                <span className="ml-1">{score}% Safe</span>
+                <span className="ml-1">{score}% - {getScoreText(score)}</span>
               </Badge>
             )}
           </div>
-          <div className="text-sm text-gray-500 truncate">{correctJobTitle || jobData.title}</div>
-          <div className="text-xs text-gray-400 truncate">{jobData.company}</div>
+          <div className="text-sm font-medium mt-1 truncate">{correctJobTitle || jobData.title}</div>
+          <div className="text-xs text-gray-500 truncate">{jobData.company}</div>
+          {companyWebsite && (
+            <div className="text-xs text-blue-500 hover:underline mt-1">
+              <a href={companyWebsite} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1">
+                <LinkIcon className="h-3 w-3" />
+                {companyWebsite.replace(/^https?:\/\/(www\.)?/i, '')}
+              </a>
+            </div>
+          )}
         </CardHeader>
 
         <CardContent>
           {analyzing ? (
-            <div className="space-y-4 py-4">
-              <div className="text-center text-sm text-gray-500">
-                Analyzing job posting...
+            <div className="space-y-6 py-4">
+              <div className="text-center">
+                <h3 className="text-lg font-medium mb-2">Analyzing Job Posting</h3>
+                <p className="text-sm text-gray-500">We're reviewing the job posting for potential issues...</p>
               </div>
-              <div className="flex justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Checking company validity</span>
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Verifying job posting</span>
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Identifying red flags</span>
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Calculating safety score</span>
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                </div>
               </div>
               <Progress value={50} className="h-2" />
+              <p className="text-center text-xs text-gray-400">This may take 30-60 seconds</p>
             </div>
           ) : error ? (
             <div className="space-y-4">
@@ -202,8 +231,8 @@ const JobValidator = ({ jobData, currentUrl }: JobValidatorProps) => {
             </div>
           ) : (
             <>
-              <div className="mb-4">
-                <div className="flex items-center gap-2 mb-1">
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-2">
                   <span className="font-medium">Safety Score</span>
                   <Info className="h-4 w-4 text-gray-400" />
                 </div>
@@ -215,57 +244,39 @@ const JobValidator = ({ jobData, currentUrl }: JobValidatorProps) => {
                     style={{ width: `${score}%` }}
                   ></div>
                 </div>
-                <div className="mt-2 text-sm text-gray-700">{analysis}</div>
+                <div className="mt-4 text-sm text-gray-700 leading-relaxed">{analysis}</div>
               </div>
 
-              <Alert className="mb-4 bg-gray-50">
-                <AlertTitle className="flex items-center gap-2">
+              <Alert className="mb-6 bg-gray-50">
+                <AlertTitle className="flex items-center gap-2 mb-2">
                   <Info className="h-4 w-4" />
                   Detailed Analysis
                 </AlertTitle>
                 <AlertDescription>
-                  <div className="mt-2 space-y-3 text-sm">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-gray-600">Company Check:</span>
-                      </div>
+                  <div className="space-y-4 text-sm">
+                    <div className="grid grid-cols-2 gap-y-3">
+                      <div className="text-gray-600">Company Verification:</div>
                       <div className="flex items-center gap-1.5">
                         {companyValid ? (
-                          <><CheckCircle className="h-4 w-4 text-green-500" /> <span className="text-green-600">Valid</span></>
+                          <><CheckCircle className="h-4 w-4 text-green-500" /> <span className="text-green-600">Verified</span></>
                         ) : (
-                          <><X className="h-4 w-4 text-red-500" /> <span className="text-red-600">Suspicious</span></>
+                          <><X className="h-4 w-4 text-red-500" /> <span className="text-red-600">Unverified</span></>
                         )}
                       </div>
 
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-gray-600">Job Posting Check:</span>
-                      </div>
+                      <div className="text-gray-600">Job Posting Verification:</div>
                       <div className="flex items-center gap-1.5">
                         {jobValid ? (
-                          <><CheckCircle className="h-4 w-4 text-green-500" /> <span className="text-green-600">Valid</span></>
+                          <><CheckCircle className="h-4 w-4 text-green-500" /> <span className="text-green-600">Verified on company site</span></>
                         ) : (
-                          <><X className="h-4 w-4 text-red-500" /> <span className="text-red-600">Suspicious</span></>
+                          <><X className="h-4 w-4 text-red-500" /> <span className="text-red-600">Not found on company site</span></>
                         )}
                       </div>
-                      
-                      {companyWebsite && (
-                        <>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-gray-600">Company Website:</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <LinkIcon className="h-4 w-4 text-blue-500" />
-                            <a href={companyWebsite} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-                              {companyWebsite.replace(/^https?:\/\//, '')}
-                            </a>
-                          </div>
-                        </>
-                      )}
                     </div>
 
                     <Separator className="my-2" />
 
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-y-3">
                       <div className="flex items-center gap-1.5">
                         <Search className="h-4 w-4 text-blue-500" />
                         <span>People viewed:</span>
@@ -273,7 +284,7 @@ const JobValidator = ({ jobData, currentUrl }: JobValidatorProps) => {
                       <div>{viewCount !== null ? viewCount.toLocaleString() : 'Unknown'}</div>
 
                       <div className="flex items-center gap-1.5">
-                        <TrendingUp className="h-4 w-4 text-blue-500" />
+                        <CheckCircle className="h-4 w-4 text-blue-500" />
                         <span>Applications:</span>
                       </div>
                       <div>{applicationCount !== null ? applicationCount.toLocaleString() : 'Unknown'}</div>
@@ -288,45 +299,49 @@ const JobValidator = ({ jobData, currentUrl }: JobValidatorProps) => {
                 </AlertDescription>
               </Alert>
 
-              {greenFlags.length > 0 && (
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium mb-2 flex items-center gap-1.5">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    Green Flags:
-                  </h4>
-                  <ul className="list-disc pl-5 text-sm space-y-1">
-                    {greenFlags.map((flag, index) => (
-                      <li key={index} className="text-green-700">
-                        {flag}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              <div className="space-y-4">
+                {greenFlags.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      Positive Indicators:
+                    </h4>
+                    <ul className="list-disc pl-5 text-sm space-y-1.5">
+                      {greenFlags.map((flag, index) => (
+                        <li key={index} className="text-green-700">
+                          {flag}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-              {redFlags.length > 0 && (
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium mb-2 flex items-center gap-1.5">
-                    <AlertTriangle className="h-4 w-4 text-red-500" />
-                    Red Flags:
-                  </h4>
-                  <ul className="list-disc pl-5 text-sm space-y-1">
-                    {redFlags.map((flag, index) => (
-                      <li key={index} className="text-red-600">
-                        {flag}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+                {redFlags.length > 0 && (
+                  <div>
+                    <h4 className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                      Warning Signs:
+                    </h4>
+                    <ul className="list-disc pl-5 text-sm space-y-1.5">
+                      {redFlags.map((flag, index) => (
+                        <li key={index} className="text-red-600">
+                          {flag}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
 
-              <div className="flex justify-end space-x-2 mt-4">
+              <div className="flex justify-end space-x-2 mt-6">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleReport}
                   disabled={reported}
+                  className="flex items-center gap-1.5"
                 >
+                  <Flag className="h-4 w-4" />
                   {reported ? "Reported" : "Report as Suspicious"}
                 </Button>
               </div>
