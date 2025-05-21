@@ -1,8 +1,69 @@
-# Welcome to your Lovable project
+
+# JobSafe - AI Job Posting Validator
+
+A Chrome extension that helps job seekers validate the legitimacy of job postings using AI analysis.
 
 ## Project info
 
 **URL**: https://lovable.dev/projects/29a26ab3-0764-4fcd-8ca4-851a2301c5d1
+
+## Features
+
+- Analyzes job postings from LinkedIn, Indeed, Monster, and Glassdoor
+- Identifies potential red flags in job descriptions
+- Provides a safety score for job postings
+- Shows company verification status
+- Displays application metrics
+
+## Building the Chrome Extension
+
+To build the extension for Chrome, follow these steps:
+
+```sh
+# Step 1: Clone the repository
+git clone <YOUR_GIT_URL>
+
+# Step 2: Navigate to the project directory
+cd <YOUR_PROJECT_NAME>
+
+# Step 3: Install dependencies
+npm i
+
+# Step 4: Build the extension
+node build-extension.js
+```
+
+The built extension will be available in the `dist` directory.
+
+## Installing the Chrome Extension
+
+1. Open Chrome and navigate to `chrome://extensions/`
+2. Enable "Developer mode" using the toggle in the top-right corner
+3. Click "Load unpacked"
+4. Select the `dist` folder from the build output
+
+## Using the Extension
+
+1. Navigate to a job posting on LinkedIn, Indeed, Monster, or Glassdoor
+2. Click the JobSafe extension icon in your browser toolbar
+3. Review the analysis, safety score, and red/green flags
+4. Use this information to make an informed decision about the job posting
+
+## Development
+
+For development:
+
+```sh
+npm run dev
+```
+
+This project is built with:
+
+- Vite
+- TypeScript
+- React
+- shadcn-ui
+- Tailwind CSS
 
 ## How can I edit this code?
 
@@ -19,55 +80,3 @@ Changes made via Lovable will be committed automatically to this repo.
 If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
 
 The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/29a26ab3-0764-4fcd-8ca4-851a2301c5d1) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
