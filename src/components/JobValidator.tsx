@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +14,11 @@ interface JobData {
   description: string;
   location: string;
   salary?: string;
+  analysisResult?: {
+    score: number;
+    analysis: string;
+    redFlags: string[];
+  }
 }
 
 interface JobValidatorProps {
@@ -32,32 +36,43 @@ const JobValidator = ({ jobData, currentUrl }: JobValidatorProps) => {
 
   useEffect(() => {
     console.log("JobData received in JobValidator:", jobData);
-    const performAnalysis = async () => {
-      setAnalyzing(true);
-      setError(null);
-      
-      try {
-        // Make sure we're using the actual job data passed as props
-        const result = await analyzeJobPosting(jobData);
-        setScore(result.score);
-        setAnalysis(result.analysis);
-        setRedFlags(result.redFlags);
-        setAnalyzing(false);
-      } catch (error) {
-        console.error("Error analyzing job posting:", error);
-        setAnalyzing(false);
-        setError((error as Error).message);
-        
-        toast({
-          title: "Analysis Error",
-          description: (error as Error).message || "We couldn't analyze this job posting.",
-          variant: "destructive",
-        });
-      }
-    };
-
+    
+    // If we already have analysis results from URL analysis, use those
+    if (jobData.analysisResult) {
+      setScore(jobData.analysisResult.score);
+      setAnalysis(jobData.analysisResult.analysis);
+      setRedFlags(jobData.analysisResult.redFlags);
+      setAnalyzing(false);
+      return;
+    }
+    
+    // Otherwise, perform analysis on the job data
     performAnalysis();
   }, [jobData]);
+
+  const performAnalysis = async () => {
+    setAnalyzing(true);
+    setError(null);
+    
+    try {
+      // Make sure we're using the actual job data passed as props
+      const result = await analyzeJobPosting(jobData);
+      setScore(result.score);
+      setAnalysis(result.analysis);
+      setRedFlags(result.redFlags);
+      setAnalyzing(false);
+    } catch (error) {
+      console.error("Error analyzing job posting:", error);
+      setAnalyzing(false);
+      setError((error as Error).message);
+      
+      toast({
+        title: "Analysis Error",
+        description: (error as Error).message || "We couldn't analyze this job posting.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleReport = async () => {
     try {
@@ -95,26 +110,6 @@ const JobValidator = ({ jobData, currentUrl }: JobValidatorProps) => {
     setTimeout(() => {
       performAnalysis();
     }, 100);
-  };
-
-  const performAnalysis = async () => {
-    try {
-      const result = await analyzeJobPosting(jobData);
-      setScore(result.score);
-      setAnalysis(result.analysis);
-      setRedFlags(result.redFlags);
-      setAnalyzing(false);
-    } catch (error) {
-      console.error("Error analyzing job posting:", error);
-      setAnalyzing(false);
-      setError((error as Error).message);
-      
-      toast({
-        title: "Analysis Error",
-        description: (error as Error).message || "We couldn't analyze this job posting.",
-        variant: "destructive",
-      });
-    }
   };
 
   return (

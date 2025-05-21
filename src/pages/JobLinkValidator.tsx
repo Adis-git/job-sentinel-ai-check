@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import JobValidator from "@/components/JobValidator";
 import { toast } from "@/hooks/use-toast";
-import { AlertCircle, Link, Key, AlertTriangle } from "lucide-react";
+import { AlertCircle, Link as LinkIcon, Key, AlertTriangle, Loader2 } from "lucide-react";
+import { analyzeJobUrl } from "@/services/analysisService";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +23,7 @@ const JobLinkValidator = () => {
   const [jobUrl, setJobUrl] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [jobData, setJobData] = useState<any>(null);
+  const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [error, setError] = useState<string>("");
   const [manualEntry, setManualEntry] = useState<boolean>(false);
   const [apiKey, setApiKey] = useState<string>(localStorage.getItem("openai_api_key") || "");
@@ -46,15 +48,7 @@ const JobLinkValidator = () => {
     }));
   };
 
-  const getJobSite = (url: string) => {
-    if (url.includes("linkedin.com")) return "linkedin";
-    if (url.includes("indeed.com")) return "indeed";
-    if (url.includes("monster.com")) return "monster";
-    if (url.includes("glassdoor.com")) return "glassdoor";
-    return "unknown";
-  };
-
-  const fetchJobData = async () => {
+  const analyzeUrl = async () => {
     if (!jobUrl) {
       toast({
         title: "Error",
@@ -76,39 +70,31 @@ const JobLinkValidator = () => {
     try {
       setIsLoading(true);
       setError("");
+      setAnalysisResult(null);
+      setJobData(null);
       
-      // Identify which job site we're dealing with
-      const jobSite = getJobSite(jobUrl);
+      // Get analysis directly from the URL
+      const result = await analyzeJobUrl(jobUrl);
       
-      if (jobSite === "unknown") {
-        setError("Unrecognized job site. We currently support LinkedIn, Indeed, Monster, and Glassdoor.");
-        setIsLoading(false);
-        return;
-      }
-      
-      // In a real extension, we would use content scripts to extract the job data
-      // For now, we'll simulate fetching from a job site with minimal data
-      const mockJobData = {
-        title: "Software Engineer",
-        company: "Acme Technology",
-        description: "We're seeking a talented Software Engineer to join our team. You'll work on cutting-edge projects using modern technologies. Requirements include 3+ years of experience with React, Node.js, and cloud platforms. Competitive salary and benefits.",
-        location: "Remote",
-        salary: "$120,000 - $160,000"
+      // Create a job data object with URL as the only detail
+      const urlJobData = {
+        title: "Job from URL",
+        company: new URL(jobUrl).hostname,
+        description: `This analysis is based on the URL: ${jobUrl}`,
+        location: "Unknown (URL analysis only)",
       };
       
-      // In a real scenario, we'd fetch the actual job data here
-      setTimeout(() => {
-        setJobData(mockJobData);
-        setIsLoading(false);
-        setManualEntry(false);
-      }, 1000);
+      setJobData(urlJobData);
+      setAnalysisResult(result);
+      setManualEntry(false);
+      setIsLoading(false);
       
     } catch (err) {
       setIsLoading(false);
-      setError("Failed to fetch job data. Please check the URL and try again.");
+      setError((err as Error).message || "Failed to analyze job URL");
       toast({
         title: "Error",
-        description: "Failed to fetch job data",
+        description: (err as Error).message || "Failed to analyze job URL",
         variant: "destructive",
       });
     }
@@ -116,6 +102,7 @@ const JobLinkValidator = () => {
 
   const handleManualEntry = () => {
     setJobData(null);
+    setAnalysisResult(null);
     setManualEntry(true);
     setTimeout(() => {
       document.getElementById("job-description")?.focus();
@@ -209,7 +196,7 @@ const JobLinkValidator = () => {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Link size={20} />
+            <LinkIcon size={20} />
             <span>Paste Job URL</span>
           </CardTitle>
         </CardHeader>
@@ -226,14 +213,19 @@ const JobLinkValidator = () => {
                   className="flex-1"
                 />
                 <Button 
-                  onClick={fetchJobData} 
+                  onClick={analyzeUrl} 
                   disabled={isLoading || !jobUrl || !isApiKeySet}
                 >
-                  {isLoading ? "Loading..." : "Validate"}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : "Analyze URL"}
                 </Button>
               </div>
               <p className="text-sm text-gray-500">
-                Paste a LinkedIn, Indeed, Monster, or Glassdoor job posting URL
+                Paste any job posting URL to analyze its legitimacy
               </p>
               {!isApiKeySet && (
                 <div className="flex items-center gap-2 p-3 bg-yellow-50 text-yellow-700 rounded-md">
@@ -261,8 +253,16 @@ const JobLinkValidator = () => {
         </CardContent>
       </Card>
       
-      {jobData ? (
-        <JobValidator jobData={jobData} currentUrl={jobUrl} />
+      {jobData && analysisResult ? (
+        <JobValidator jobData={{...jobData, analysisResult}} currentUrl={jobUrl} />
+      ) : isLoading ? (
+        <Card className="mb-6">
+          <CardContent className="flex flex-col items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+            <p className="text-center text-gray-500">Analyzing job URL...</p>
+            <p className="text-center text-gray-400 text-sm mt-2">This may take a few moments</p>
+          </CardContent>
+        </Card>
       ) : manualEntry ? (
         <Card>
           <CardHeader>

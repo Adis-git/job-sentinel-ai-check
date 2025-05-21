@@ -108,3 +108,93 @@ export const analyzeJobPosting = async (
     throw new Error("Failed to analyze job posting: " + (error as Error).message);
   }
 };
+
+/**
+ * Analyzes a job URL directly using OpenAI.
+ */
+export const analyzeJobUrl = async (
+  jobUrl: string
+): Promise<AnalysisResult> => {
+  try {
+    const apiKey = localStorage.getItem('openai_api_key');
+    
+    if (!apiKey) {
+      throw new Error("OpenAI API key is required for job analysis");
+    }
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o", // Using GPT-4o for better analysis
+        messages: [
+          {
+            role: "system",
+            content: `You are an AI designed to analyze job postings and detect potential scams or fraudulent listings from just the URL. 
+            Based on the job URL provided, you need to evaluate the likelihood of the job posting being legitimate or a scam.
+            
+            Assign a score from 0-100, where:
+            - 100 is definitely legitimate 
+            - 0 is definitely a scam
+            
+            Some factors to consider from the URL:
+            - Domain reputation (established job sites vs unknown domains)
+            - URL structure (does it look suspicious or legitimate)
+            - Known job board domains vs unfamiliar ones
+            - Presence of unusual characters or patterns in the URL
+            
+            Return your response as a JSON object with the following properties:
+            - score: number between 0-100
+            - analysis: brief text explaining your evaluation of the URL
+            - redFlags: array of strings listing identified red flags in the URL (empty array if none found)
+            
+            IMPORTANT: Return ONLY valid JSON without any markdown formatting or backticks.`
+          },
+          {
+            role: "user",
+            content: `Please analyze this job posting URL: ${jobUrl}`
+          }
+        ],
+        temperature: 0.1, // Lower temperature for more deterministic response
+        max_tokens: 1000
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "API request failed");
+    }
+
+    const data = await response.json();
+    const resultContent = data.choices[0].message.content;
+    
+    // Remove any possible backticks or markdown formatting from the response
+    const cleanedContent = resultContent
+      .replace(/```json/g, '')
+      .replace(/```/g, '')
+      .trim();
+    
+    console.log("OpenAI response content for URL analysis:", cleanedContent);
+    
+    // Parse the JSON response
+    let result;
+    try {
+      result = JSON.parse(cleanedContent);
+    } catch (e) {
+      console.error("Failed to parse OpenAI response:", resultContent);
+      throw new Error("Failed to parse analysis results");
+    }
+
+    return {
+      score: result.score,
+      analysis: result.analysis,
+      redFlags: result.redFlags || []
+    };
+  } catch (error) {
+    console.error("Error analyzing job URL with OpenAI:", error);
+    throw new Error("Failed to analyze job posting URL: " + (error as Error).message);
+  }
+};
