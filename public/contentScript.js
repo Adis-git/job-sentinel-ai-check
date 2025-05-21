@@ -24,6 +24,13 @@ const SELECTORS = {
     description: ".job-description",
     location: ".location",
     salary: ".mux-job-cards-salary"
+  },
+  glassdoor: {
+    title: ".job-title",
+    company: ".employer-name",
+    description: ".jobDescriptionContent",
+    location: ".location",
+    salary: ".salary-estimate"
   }
 };
 
@@ -38,6 +45,7 @@ function getJobSite(url) {
   if (url.includes("linkedin.com")) return "linkedin";
   if (url.includes("indeed.com")) return "indeed";
   if (url.includes("monster.com")) return "monster";
+  if (url.includes("glassdoor.com")) return "glassdoor";
   return null;
 }
 
@@ -48,7 +56,7 @@ function extractJobData() {
     const site = getJobSite(url);
     
     if (!site) {
-      return { success: false };
+      return { success: false, error: "Unsupported job site" };
     }
     
     const selectors = SELECTORS[site];
@@ -63,13 +71,22 @@ function extractJobData() {
       siteName: site
     };
 
+    // Simple validation to ensure we got at least some data
+    if (!jobData.title || !jobData.company || !jobData.description) {
+      return { 
+        success: false, 
+        error: "Could not extract essential job data",
+        partialData: jobData
+      };
+    }
+
     return {
       success: true,
       data: jobData
     };
   } catch (error) {
     console.error("Error extracting job data:", error);
-    return { success: false };
+    return { success: false, error: error.message };
   }
 }
 

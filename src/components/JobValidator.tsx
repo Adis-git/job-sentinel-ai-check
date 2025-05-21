@@ -31,11 +31,13 @@ const JobValidator = ({ jobData, currentUrl }: JobValidatorProps) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log("JobData received in JobValidator:", jobData);
     const performAnalysis = async () => {
       setAnalyzing(true);
       setError(null);
       
       try {
+        // Make sure we're using the actual job data passed as props
         const result = await analyzeJobPosting(jobData);
         setScore(result.score);
         setAnalysis(result.analysis);
