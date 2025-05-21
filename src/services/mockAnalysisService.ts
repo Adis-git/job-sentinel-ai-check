@@ -23,10 +23,12 @@ export const mockAnalyzeJobPosting = async (
   // Convert description to lowercase for easier pattern matching
   const description = jobData.description.toLowerCase();
   const title = jobData.title.toLowerCase();
+  const company = jobData.company.toLowerCase();
+  const salary = jobData.salary ? jobData.salary.toLowerCase() : '';
   
   // Define red flags to look for
   const redFlags = [];
-  let score = 85; // Start with a high score and deduct for red flags
+  let score = 90; // Start with a high score and deduct for red flags
   
   // Check for vague job titles
   if (title.includes("work from home") && title.length < 25) {
@@ -34,12 +36,28 @@ export const mockAnalyzeJobPosting = async (
     score -= 15;
   }
   
+  // Check for overly generic titles with no specifics
+  if (title.length < 10 || title === "online job" || title === "remote position") {
+    redFlags.push("Extremely vague job title with no specific role information");
+    score -= 10;
+  }
+  
   // Check for unrealistic salary claims
-  if (jobData.salary) {
-    const salary = jobData.salary.toLowerCase();
-    if (salary.includes("unlimited") || salary.includes("six figure")) {
+  if (salary) {
+    if (salary.includes("unlimited") || 
+        salary.includes("six figure") || 
+        salary.includes("$$$") ||
+        salary.includes("earn up to") ||
+        salary.includes("huge earning")) {
       redFlags.push("Unrealistic salary claims or promises of unlimited earnings");
       score -= 20;
+    }
+    
+    // Check for extremely high salaries for entry-level positions
+    if ((title.includes("entry") || title.includes("junior")) && 
+        (salary.includes("200,000") || salary.includes("300,000"))) {
+      redFlags.push("Unusually high salary for an entry-level position");
+      score -= 15;
     }
   }
   
@@ -49,16 +67,35 @@ export const mockAnalyzeJobPosting = async (
     description.includes("registration fee") ||
     description.includes("bank account") ||
     description.includes("bank details") ||
-    description.includes("ssn")
+    description.includes("ssn") ||
+    description.includes("social security")
   ) {
     redFlags.push("Requests for payment, financial information, or personal details");
     score -= 25;
   }
   
+  // Check for urgency language
+  if (
+    description.includes("urgent") ||
+    description.includes("immediate start") ||
+    description.includes("apply now") ||
+    description.includes("don't wait")
+  ) {
+    if (description.indexOf("urgent") !== description.lastIndexOf("urgent") || 
+        description.includes("!!!")) {
+      redFlags.push("Excessive urgency in job posting language");
+      score -= 15;
+    } else {
+      // Less severe penalty for normal urgency
+      redFlags.push("Uses urgency tactics in job description");
+      score -= 5;
+    }
+  }
+  
   // Check for poor grammar/spelling
   const grammarErrors = [
     "ur company", "ur resume", "ur experience",
-    "plz send", "send cv to email",
+    "plz send", "send cv to email", "send ur cv",
     "100% legit", "100% legitimate"
   ];
   
@@ -70,15 +107,50 @@ export const mockAnalyzeJobPosting = async (
     }
   }
   
+  // Check for excessive capitalization
+  const uppercaseWords = description.split(' ')
+    .filter(word => word === word.toUpperCase() && word.length > 3)
+    .length;
+  
+  if (uppercaseWords > 5) {
+    redFlags.push("Excessive use of ALL CAPS in job description");
+    score -= 10;
+  }
+  
   // Check for missing company information
-  if (!jobData.company || jobData.company.length < 2) {
+  if (!company || company.length < 2) {
     redFlags.push("Missing or vague company information");
     score -= 15;
   }
   
+  // Check for overly vague company names
+  const vagueCompanyNames = ["solutions", "global", "international", "worldwide", "enterprises"];
+  let isVague = false;
+  
+  for (const name of vagueCompanyNames) {
+    if (company === name) {
+      isVague = true;
+      break;
+    }
+  }
+  
+  if (isVague) {
+    redFlags.push("Extremely generic company name with no specific identity");
+    score -= 10;
+  }
+  
   // Check for extremely short descriptions
-  if (description.length < 100) {
+  if (description.length < 150) {
     redFlags.push("Extremely brief job description with minimal details");
+    score -= 15;
+  }
+  
+  // Check for lack of specific job requirements
+  if (!description.includes("experience") || 
+      !description.includes("skill") || 
+      description.includes("no experience needed") ||
+      description.includes("no experience required")) {
+    redFlags.push("No specific skills or experience requirements mentioned");
     score -= 10;
   }
   
@@ -91,8 +163,10 @@ export const mockAnalyzeJobPosting = async (
     analysis = "This job posting appears to be legitimate with no major red flags.";
   } else if (score >= 60) {
     analysis = "This job posting has some concerning elements. Review carefully before applying.";
-  } else {
+  } else if (score >= 40) {
     analysis = "This job posting shows multiple signs of being potentially fraudulent. Proceed with extreme caution.";
+  } else {
+    analysis = "This job posting has numerous red flags indicating it is likely a scam. We strongly advise against applying.";
   }
   
   return {

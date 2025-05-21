@@ -14,9 +14,41 @@ const JobLinkValidator = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [jobData, setJobData] = useState<any>(null);
   const [error, setError] = useState<string>("");
+  const [manualEntry, setManualEntry] = useState<boolean>(false);
+  const [manualJobData, setManualJobData] = useState({
+    title: "",
+    company: "",
+    description: "",
+    location: "",
+    salary: ""
+  });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setJobUrl(e.target.value);
+  };
+
+  const handleManualInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target;
+    const fieldName = id.replace("job-", "").replace("-", ""); // Convert "job-title" to "title"
+    setManualJobData(prev => ({
+      ...prev,
+      [fieldName]: value
+    }));
+  };
+
+  const getJobSite = (url: string) => {
+    if (url.includes("linkedin.com")) return "linkedin";
+    if (url.includes("indeed.com")) return "indeed";
+    if (url.includes("monster.com")) return "monster";
+    if (url.includes("glassdoor.com")) return "glassdoor";
+    return "unknown";
+  };
+
+  // Function to generate unique-ish score based on URL
+  const generateScore = (url: string) => {
+    // Use the length of the URL to create some variability (60-95 range)
+    const baseScore = 60 + (url.length % 36);
+    return Math.min(95, baseScore); // Cap at 95
   };
 
   const fetchJobData = async () => {
@@ -33,19 +65,50 @@ const JobLinkValidator = () => {
       setIsLoading(true);
       setError("");
       
-      // For demo purposes, we'll create mock job data based on the URL
-      // In a real implementation, this would extract data from the job posting page
+      // Identify which job site we're dealing with
+      const jobSite = getJobSite(jobUrl);
+      
+      // Generate a score based on the URL to simulate different results
+      const score = generateScore(jobUrl);
+      const isLegit = score > 75;
+      
+      // Simulate API delay
       setTimeout(() => {
+        // Different mock data based on the job site
+        if (jobSite === "unknown") {
+          setError("Unrecognized job site. We currently support LinkedIn, Indeed, Monster, and Glassdoor.");
+          setIsLoading(false);
+          return;
+        }
+        
         const mockJobData = {
-          title: "Software Engineer",
-          company: "Example Tech Co",
-          description: "We are looking for a skilled software engineer to join our team. The ideal candidate will have experience with React, TypeScript, and backend technologies.",
-          location: "Remote",
-          salary: "$120,000 - $150,000",
+          title: jobSite === "linkedin" ? "Software Engineer" :
+                 jobSite === "indeed" ? "Frontend Developer" :
+                 jobSite === "monster" ? "Full Stack Engineer" : 
+                 "Web Developer",
+                 
+          company: jobSite === "linkedin" ? "Tech Innovations Inc." :
+                   jobSite === "indeed" ? "Digital Solutions Corp" :
+                   jobSite === "monster" ? "NextGen Software" : 
+                   "WebCraft Technologies",
+                   
+          description: isLegit ? 
+            "We are seeking an experienced developer to join our team. The ideal candidate will have strong skills in modern web technologies and a passion for creating high-quality software." :
+            "URGENT HIRING! Work from home opportunity with HUGE earning potential!!! Make $$$ in your spare time. No experience needed, training provided. CONTACT US TODAY with your bank details to get started ASAP!!!",
+            
+          location: jobSite === "linkedin" ? "San Francisco, CA (Remote)" :
+                    jobSite === "indeed" ? "New York, NY" :
+                    jobSite === "monster" ? "Remote" : 
+                    "Chicago, IL",
+                    
+          salary: isLegit ?
+                  "$120,000 - $150,000" :
+                  score < 65 ? "UNLIMITED EARNINGS!!!" : "$200,000 - $300,000"
         };
         
         setJobData(mockJobData);
         setIsLoading(false);
+        setManualEntry(false);
       }, 1500);
       
     } catch (err) {
@@ -61,9 +124,23 @@ const JobLinkValidator = () => {
 
   const handleManualEntry = () => {
     setJobData(null);
+    setManualEntry(true);
     setTimeout(() => {
       document.getElementById("job-description")?.focus();
     }, 100);
+  };
+
+  const handleSubmitManual = () => {
+    if (!manualJobData.title || !manualJobData.company || !manualJobData.description) {
+      toast({
+        title: "Error",
+        description: "Please fill in the required fields: Job Title, Company, and Description",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setJobData(manualJobData);
   };
 
   return (
@@ -97,7 +174,7 @@ const JobLinkValidator = () => {
                 </Button>
               </div>
               <p className="text-sm text-gray-500">
-                Paste a LinkedIn, Indeed, or Monster job posting URL
+                Paste a LinkedIn, Indeed, Monster, or Glassdoor job posting URL
               </p>
             </div>
             
@@ -121,46 +198,71 @@ const JobLinkValidator = () => {
       
       {jobData ? (
         <JobValidator jobData={jobData} currentUrl={jobUrl} />
-      ) : (
+      ) : manualEntry ? (
         <Card>
           <CardHeader>
             <CardTitle>Manual Job Entry</CardTitle>
           </CardHeader>
           <CardContent>
-            <form className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSubmitManual(); }}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="job-title">Job Title</Label>
-                  <Input id="job-title" placeholder="e.g., Software Engineer" />
+                  <Label htmlFor="job-title">Job Title <span className="text-red-500">*</span></Label>
+                  <Input 
+                    id="job-title" 
+                    placeholder="e.g., Software Engineer" 
+                    value={manualJobData.title} 
+                    onChange={handleManualInputChange}
+                    required 
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="company">Company</Label>
-                  <Input id="company" placeholder="e.g., Example Tech Co" />
+                  <Label htmlFor="job-company">Company <span className="text-red-500">*</span></Label>
+                  <Input 
+                    id="job-company" 
+                    placeholder="e.g., Example Tech Co" 
+                    value={manualJobData.company} 
+                    onChange={handleManualInputChange}
+                    required 
+                  />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input id="location" placeholder="e.g., Remote, New York, etc." />
+                  <Label htmlFor="job-location">Location</Label>
+                  <Input 
+                    id="job-location" 
+                    placeholder="e.g., Remote, New York, etc." 
+                    value={manualJobData.location} 
+                    onChange={handleManualInputChange} 
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="salary">Salary (Optional)</Label>
-                  <Input id="salary" placeholder="e.g., $120,000 - $150,000" />
+                  <Label htmlFor="job-salary">Salary (Optional)</Label>
+                  <Input 
+                    id="job-salary" 
+                    placeholder="e.g., $120,000 - $150,000" 
+                    value={manualJobData.salary} 
+                    onChange={handleManualInputChange} 
+                  />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="job-description">Job Description</Label>
+                <Label htmlFor="job-description">Job Description <span className="text-red-500">*</span></Label>
                 <Textarea 
                   id="job-description" 
                   placeholder="Paste the job description here..."
                   rows={6}
+                  value={manualJobData.description}
+                  onChange={handleManualInputChange}
+                  required
                 />
               </div>
-              <Button type="button">Analyze Job</Button>
+              <Button type="submit">Analyze Job</Button>
             </form>
           </CardContent>
         </Card>
-      )}
+      ) : null}
     </div>
   );
 };
