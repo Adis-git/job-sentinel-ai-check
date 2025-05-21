@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -35,7 +34,6 @@ const JobLinkValidator = () => {
   const [isJobSite, setIsJobSite] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [jobData, setJobData] = useState<any>(null);
-  const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [error, setError] = useState<string>("");
   const [apiKey, setApiKey] = useState<string>(localStorage.getItem("openai_api_key") || "");
 
@@ -104,14 +102,12 @@ const JobLinkValidator = () => {
     try {
       setIsLoading(true);
       setError("");
-      setAnalysisResult(null);
       setJobData(null);
       
       // Get analysis from the URL
       const result = await analyzeJobUrl(jobUrl);
       
       setJobData(result.jobData);
-      setAnalysisResult(result.analysisResult);
       setIsLoading(false);
       
       toast({
@@ -278,8 +274,8 @@ const JobLinkValidator = () => {
         </CardContent>
       </Card>
       
-      {jobData && analysisResult ? (
-        <JobValidator jobData={jobData} analysisResult={analysisResult} />
+      {jobData ? (
+        <JobValidator jobData={jobData} currentUrl={jobUrl} />
       ) : isLoading ? (
         <Card className="mb-6">
           <CardContent className="flex flex-col items-center justify-center py-8">

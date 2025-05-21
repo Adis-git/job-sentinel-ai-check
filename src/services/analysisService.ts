@@ -1,4 +1,3 @@
-
 interface JobData {
   title: string;
   company: string;
@@ -6,6 +5,7 @@ interface JobData {
   location: string;
   salary?: string;
   url: string;
+  analysisResult?: AnalysisResult;
 }
 
 interface AnalysisResult {
@@ -88,7 +88,7 @@ export const extractJobData = async (url: string): Promise<JobData | null> => {
       company: hostname,
       description: `This analysis is based on the URL: ${url}`,
       location: "Unknown (URL analysis only)",
-      url: url
+      url: url // Ensuring the URL is included
     };
   } catch (error) {
     console.error("Error extracting job data:", error);
@@ -196,7 +196,7 @@ export const analyzeJobPosting = async (
 /**
  * Analyzes a job URL directly.
  */
-export const analyzeJobUrl = async (url: string): Promise<{jobData: JobData, analysisResult: AnalysisResult}> => {
+export const analyzeJobUrl = async (url: string): Promise<{ jobData: JobData }> => {
   // First validate the URL
   if (!isValidUrl(url)) {
     throw new Error("Invalid URL format");
@@ -217,8 +217,10 @@ export const analyzeJobUrl = async (url: string): Promise<{jobData: JobData, ana
   // Analyze the job data
   const analysisResult = await analyzeJobPosting(jobData);
   
+  // Add the analysis result to the job data for convenience
+  jobData.analysisResult = analysisResult;
+  
   return {
-    jobData,
-    analysisResult
+    jobData
   };
 };

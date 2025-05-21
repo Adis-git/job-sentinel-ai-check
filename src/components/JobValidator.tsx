@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,11 +15,13 @@ interface JobData {
   description: string;
   location: string;
   salary?: string;
-  analysisResult?: {
-    score: number;
-    analysis: string;
-    redFlags: string[];
-  }
+  url: string;
+}
+
+interface AnalysisResult {
+  score: number;
+  analysis: string;
+  redFlags: string[];
 }
 
 interface JobValidatorProps {
@@ -37,7 +40,7 @@ const JobValidator = ({ jobData, currentUrl }: JobValidatorProps) => {
   useEffect(() => {
     console.log("JobData received in JobValidator:", jobData);
     
-    // If we already have analysis results from URL analysis, use those
+    // Check if jobData already has analysis results included
     if (jobData.analysisResult) {
       setScore(jobData.analysisResult.score);
       setAnalysis(jobData.analysisResult.analysis);
