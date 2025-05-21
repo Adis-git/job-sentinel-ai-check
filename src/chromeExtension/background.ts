@@ -38,7 +38,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
     
     sendResponse({ success: true });
+    return true; // Keep the message channel open for asynchronous response
   }
+  return false;
 });
 
 // Handle tab updates to reset badge when navigating away from job sites

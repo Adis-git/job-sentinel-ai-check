@@ -104,7 +104,9 @@ function extractJobData(): { success: boolean, data?: JobData, error?: string, p
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "extractJobData") {
     sendResponse(extractJobData());
+    return true; // Keep the message channel open for asynchronous response
   }
+  return false;
 });
 
 // Notify that the content script has loaded
