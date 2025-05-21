@@ -23,7 +23,10 @@ const Index = () => {
 
   useEffect(() => {
     // Check if we're running in a Chrome extension context
-    const isExtensionEnv = typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id !== undefined;
+    const isExtensionEnv = typeof chrome !== "undefined" && 
+                          typeof chrome.runtime !== "undefined" && 
+                          typeof chrome.runtime.id !== "undefined";
+    
     setIsExtension(!!isExtensionEnv);
 
     if (isExtensionEnv) {

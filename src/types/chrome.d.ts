@@ -23,6 +23,7 @@ declare namespace chrome {
   }
 
   export namespace runtime {
+    export const id: string | undefined;
     export function onMessage(callback: (message: any, sender: any, sendResponse: any) => void): void;
     export function sendMessage(message: any, callback?: (response: any) => void): void;
   }
