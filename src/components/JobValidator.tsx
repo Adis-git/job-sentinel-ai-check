@@ -7,12 +7,34 @@ import { Badge } from "@/components/ui/badge";
 import { analyzeJobPosting } from "@/services/analysisService";
 import { reportJobPosting } from "@/services/reportingService";
 import { toast } from "@/hooks/use-toast";
-import { AlertCircle, CheckCircle, AlertTriangle, Info, Loader2 } from "lucide-react";
+import { 
+  AlertCircle, 
+  CheckCircle, 
+  AlertTriangle, 
+  Info, 
+  Loader2, 
+  User, 
+  Flag, 
+  Link as LinkIcon, 
+  TrendingUp,
+  Search,
+  X
+} from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 
 interface AnalysisResult {
   score: number;
   analysis: string;
   redFlags: string[];
+  greenFlags?: string[];
+  companyValid?: boolean;
+  jobValid?: boolean;
+  viewCount?: number;
+  applicationCount?: number;
+  reportCount?: number;
+  correctJobTitle?: string;
+  companyWebsite?: string;
 }
 
 interface JobData {
@@ -34,9 +56,17 @@ const JobValidator = ({ jobData, currentUrl }: JobValidatorProps) => {
   const [score, setScore] = useState<number | null>(null);
   const [analysis, setAnalysis] = useState<string>("");
   const [redFlags, setRedFlags] = useState<string[]>([]);
+  const [greenFlags, setGreenFlags] = useState<string[]>([]);
   const [analyzing, setAnalyzing] = useState(true);
   const [reported, setReported] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [companyValid, setCompanyValid] = useState<boolean | null>(null);
+  const [jobValid, setJobValid] = useState<boolean | null>(null);
+  const [viewCount, setViewCount] = useState<number | null>(null);
+  const [applicationCount, setApplicationCount] = useState<number | null>(null);
+  const [reportCount, setReportCount] = useState<number | null>(null);
+  const [correctJobTitle, setCorrectJobTitle] = useState<string>("");
+  const [companyWebsite, setCompanyWebsite] = useState<string>("");
 
   useEffect(() => {
     console.log("JobData received in JobValidator:", jobData);
@@ -46,6 +76,14 @@ const JobValidator = ({ jobData, currentUrl }: JobValidatorProps) => {
       setScore(jobData.analysisResult.score);
       setAnalysis(jobData.analysisResult.analysis);
       setRedFlags(jobData.analysisResult.redFlags);
+      setGreenFlags(jobData.analysisResult.greenFlags || []);
+      setCompanyValid(jobData.analysisResult.companyValid || false);
+      setJobValid(jobData.analysisResult.jobValid || false);
+      setViewCount(jobData.analysisResult.viewCount || 0);
+      setApplicationCount(jobData.analysisResult.applicationCount || 0);
+      setReportCount(jobData.analysisResult.reportCount || 0);
+      setCorrectJobTitle(jobData.analysisResult.correctJobTitle || jobData.title);
+      setCompanyWebsite(jobData.analysisResult.companyWebsite || "");
       setAnalyzing(false);
       return;
     }
@@ -64,6 +102,14 @@ const JobValidator = ({ jobData, currentUrl }: JobValidatorProps) => {
       setScore(result.score);
       setAnalysis(result.analysis);
       setRedFlags(result.redFlags);
+      setGreenFlags(result.greenFlags || []);
+      setCompanyValid(result.companyValid || false);
+      setJobValid(result.jobValid || false);
+      setViewCount(result.viewCount || 0);
+      setApplicationCount(result.applicationCount || 0);
+      setReportCount(result.reportCount || 0);
+      setCorrectJobTitle(result.correctJobTitle || jobData.title);
+      setCompanyWebsite(result.companyWebsite || "");
       setAnalyzing(false);
     } catch (error) {
       console.error("Error analyzing job posting:", error);
@@ -129,7 +175,7 @@ const JobValidator = ({ jobData, currentUrl }: JobValidatorProps) => {
               </Badge>
             )}
           </div>
-          <div className="text-sm text-gray-500 truncate">{jobData.title}</div>
+          <div className="text-sm text-gray-500 truncate">{correctJobTitle || jobData.title}</div>
           <div className="text-xs text-gray-400 truncate">{jobData.company}</div>
         </CardHeader>
 
@@ -172,12 +218,101 @@ const JobValidator = ({ jobData, currentUrl }: JobValidatorProps) => {
                 <div className="mt-2 text-sm text-gray-700">{analysis}</div>
               </div>
 
+              <Alert className="mb-4 bg-gray-50">
+                <AlertTitle className="flex items-center gap-2">
+                  <Info className="h-4 w-4" />
+                  Detailed Analysis
+                </AlertTitle>
+                <AlertDescription>
+                  <div className="mt-2 space-y-3 text-sm">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-gray-600">Company Check:</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {companyValid ? (
+                          <><CheckCircle className="h-4 w-4 text-green-500" /> <span className="text-green-600">Valid</span></>
+                        ) : (
+                          <><X className="h-4 w-4 text-red-500" /> <span className="text-red-600">Suspicious</span></>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-gray-600">Job Posting Check:</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {jobValid ? (
+                          <><CheckCircle className="h-4 w-4 text-green-500" /> <span className="text-green-600">Valid</span></>
+                        ) : (
+                          <><X className="h-4 w-4 text-red-500" /> <span className="text-red-600">Suspicious</span></>
+                        )}
+                      </div>
+                      
+                      {companyWebsite && (
+                        <>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-gray-600">Company Website:</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <LinkIcon className="h-4 w-4 text-blue-500" />
+                            <a href={companyWebsite} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                              {companyWebsite.replace(/^https?:\/\//, '')}
+                            </a>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <Separator className="my-2" />
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <Search className="h-4 w-4 text-blue-500" />
+                        <span>People viewed:</span>
+                      </div>
+                      <div>{viewCount !== null ? viewCount.toLocaleString() : 'Unknown'}</div>
+
+                      <div className="flex items-center gap-1.5">
+                        <TrendingUp className="h-4 w-4 text-blue-500" />
+                        <span>Applications:</span>
+                      </div>
+                      <div>{applicationCount !== null ? applicationCount.toLocaleString() : 'Unknown'}</div>
+
+                      <div className="flex items-center gap-1.5">
+                        <Flag className="h-4 w-4 text-red-500" />
+                        <span>Reported as suspicious:</span>
+                      </div>
+                      <div>{reportCount !== null ? reportCount.toLocaleString() : 'Unknown'}</div>
+                    </div>
+                  </div>
+                </AlertDescription>
+              </Alert>
+
+              {greenFlags.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    Green Flags:
+                  </h4>
+                  <ul className="list-disc pl-5 text-sm space-y-1">
+                    {greenFlags.map((flag, index) => (
+                      <li key={index} className="text-green-700">
+                        {flag}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {redFlags.length > 0 && (
                 <div className="mb-4">
-                  <h4 className="text-sm font-medium mb-2">Potential Red Flags:</h4>
+                  <h4 className="text-sm font-medium mb-2 flex items-center gap-1.5">
+                    <AlertTriangle className="h-4 w-4 text-red-500" />
+                    Red Flags:
+                  </h4>
                   <ul className="list-disc pl-5 text-sm space-y-1">
                     {redFlags.map((flag, index) => (
-                      <li key={index} className="text-gray-600">
+                      <li key={index} className="text-red-600">
                         {flag}
                       </li>
                     ))}

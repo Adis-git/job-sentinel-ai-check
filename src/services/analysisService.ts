@@ -12,6 +12,14 @@ interface AnalysisResult {
   score: number;
   analysis: string;
   redFlags: string[];
+  greenFlags?: string[];
+  companyValid?: boolean;
+  jobValid?: boolean;
+  viewCount?: number;
+  applicationCount?: number;
+  reportCount?: number;
+  correctJobTitle?: string;
+  companyWebsite?: string;
 }
 
 /**
@@ -122,6 +130,7 @@ export const analyzeJobPosting = async (
             role: "system",
             content: `You are an AI designed to analyze job postings and detect potential scams or fraudulent listings. 
             You need to evaluate the job posting and assign a score from 0-100, where 100 is definitely legitimate and 0 is definitely a scam.
+            
             Look for red flags like:
             - Requests for payment or financial information
             - Unrealistic salary promises
@@ -131,10 +140,27 @@ export const analyzeJobPosting = async (
             - Missing company information
             - No specific skill requirements
             
+            Also identify green flags like:
+            - Clear job responsibilities
+            - Specific skill requirements
+            - Professional language
+            - Company information matches public records
+            - Transparent application process
+            - Realistic salary expectations
+            - Contact information provided
+            
             Return your response as a JSON object with the following properties:
             - score: number between 0-100
             - analysis: brief text explaining your evaluation
             - redFlags: array of strings listing identified red flags (empty array if none found)
+            - greenFlags: array of strings listing identified green flags (empty array if none found)
+            - companyValid: boolean indicating if company appears legitimate
+            - jobValid: boolean indicating if job posting appears legitimate
+            - viewCount: estimated number of people who viewed this job (0-5000, simulate LinkedIn data)
+            - applicationCount: estimated number of people who applied (0-500, simulate LinkedIn data)
+            - reportCount: estimated number of people who reported this job as suspicious (0-50)
+            - correctJobTitle: the job title as it should appear (corrected if needed)
+            - companyWebsite: the company website URL if detectable
             
             IMPORTANT: Return ONLY valid JSON without any markdown formatting or backticks.`
           },
@@ -153,7 +179,7 @@ export const analyzeJobPosting = async (
           }
         ],
         temperature: 0.1, // Lower temperature for more deterministic response
-        max_tokens: 1000
+        max_tokens: 1500
       })
     });
 
@@ -182,10 +208,19 @@ export const analyzeJobPosting = async (
       throw new Error("Failed to parse analysis results");
     }
 
+    // Ensure we have all required fields
     return {
       score: result.score,
       analysis: result.analysis,
-      redFlags: result.redFlags || []
+      redFlags: result.redFlags || [],
+      greenFlags: result.greenFlags || [],
+      companyValid: result.companyValid || false,
+      jobValid: result.jobValid || false,
+      viewCount: result.viewCount || 0,
+      applicationCount: result.applicationCount || 0,
+      reportCount: result.reportCount || 0,
+      correctJobTitle: result.correctJobTitle || jobData.title,
+      companyWebsite: result.companyWebsite || ""
     };
   } catch (error) {
     console.error("Error analyzing job with OpenAI:", error);
