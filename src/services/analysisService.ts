@@ -48,10 +48,12 @@ export const analyzeJobPosting = async (
             - Missing company information
             - No specific skill requirements
             
-            Return ONLY a JSON object with the following properties:
+            Return your response as a JSON object with the following properties:
             - score: number between 0-100
             - analysis: brief text explaining your evaluation
-            - redFlags: array of strings listing identified red flags (empty array if none found)`
+            - redFlags: array of strings listing identified red flags (empty array if none found)
+            
+            IMPORTANT: Return ONLY valid JSON without any markdown formatting or backticks.`
           },
           {
             role: "user",
@@ -79,10 +81,18 @@ export const analyzeJobPosting = async (
     const data = await response.json();
     const resultContent = data.choices[0].message.content;
     
+    // Remove any possible backticks or markdown formatting from the response
+    const cleanedContent = resultContent
+      .replace(/```json/g, '')
+      .replace(/```/g, '')
+      .trim();
+    
+    console.log("OpenAI response content:", cleanedContent);
+    
     // Parse the JSON response
     let result;
     try {
-      result = JSON.parse(resultContent);
+      result = JSON.parse(cleanedContent);
     } catch (e) {
       console.error("Failed to parse OpenAI response:", resultContent);
       throw new Error("Failed to parse analysis results");
