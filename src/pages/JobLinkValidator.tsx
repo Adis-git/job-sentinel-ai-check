@@ -3,12 +3,22 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import JobValidator from "@/components/JobValidator";
 import { toast } from "@/hooks/use-toast";
-import { AlertCircle, Link as LinkIcon, Key, AlertTriangle, Loader2 } from "lucide-react";
-import { analyzeJobUrl } from "@/services/analysisService";
+import { 
+  AlertCircle, 
+  Link as LinkIcon, 
+  Key, 
+  AlertTriangle, 
+  Loader2,
+  CheckCircle
+} from "lucide-react";
+import { 
+  analyzeJobUrl,
+  isValidUrl,
+  isJobPostingUrl
+} from "@/services/analysisService";
 import {
   Dialog,
   DialogContent,
@@ -21,40 +31,64 @@ import {
 
 const JobLinkValidator = () => {
   const [jobUrl, setJobUrl] = useState<string>("");
+  const [isValidInput, setIsValidInput] = useState<boolean | null>(null);
+  const [isJobSite, setIsJobSite] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [jobData, setJobData] = useState<any>(null);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [error, setError] = useState<string>("");
-  const [manualEntry, setManualEntry] = useState<boolean>(false);
   const [apiKey, setApiKey] = useState<string>(localStorage.getItem("openai_api_key") || "");
-  const [manualJobData, setManualJobData] = useState({
-    title: "",
-    company: "",
-    description: "",
-    location: "",
-    salary: ""
-  });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setJobUrl(e.target.value);
+    const value = e.target.value;
+    setJobUrl(value);
+    
+    // Reset validation states when input changes
+    if (isValidInput !== null || isJobSite !== null) {
+      setIsValidInput(null);
+      setIsJobSite(null);
+    }
   };
 
-  const handleManualInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { id, value } = e.target;
-    const fieldName = id.replace("job-", "").replace("-", ""); // Convert "job-title" to "title"
-    setManualJobData(prev => ({
-      ...prev,
-      [fieldName]: value
-    }));
-  };
-
-  const analyzeUrl = async () => {
+  const validateUrl = () => {
     if (!jobUrl) {
       toast({
         title: "Error",
         description: "Please enter a job URL",
         variant: "destructive",
       });
+      return false;
+    }
+
+    const isValid = isValidUrl(jobUrl);
+    setIsValidInput(isValid);
+    
+    if (!isValid) {
+      toast({
+        title: "Invalid URL",
+        description: "Please enter a valid URL",
+        variant: "destructive",
+      });
+      return false;
+    }
+    
+    const isJob = isJobPostingUrl(jobUrl);
+    setIsJobSite(isJob);
+    
+    if (!isJob) {
+      toast({
+        title: "Not a Job Site",
+        description: "This URL doesn't appear to be a job posting",
+        variant: "destructive",
+      });
+      return false;
+    }
+    
+    return true;
+  };
+
+  const analyzeUrl = async () => {
+    if (!validateUrl()) {
       return;
     }
 
@@ -73,62 +107,28 @@ const JobLinkValidator = () => {
       setAnalysisResult(null);
       setJobData(null);
       
-      // Get analysis directly from the URL
+      // Get analysis from the URL
       const result = await analyzeJobUrl(jobUrl);
       
-      // Create a job data object with URL as the only detail
-      const urlJobData = {
-        title: "Job from URL",
-        company: new URL(jobUrl).hostname,
-        description: `This analysis is based on the URL: ${jobUrl}`,
-        location: "Unknown (URL analysis only)",
-      };
-      
-      setJobData(urlJobData);
-      setAnalysisResult(result);
-      setManualEntry(false);
+      setJobData(result.jobData);
+      setAnalysisResult(result.analysisResult);
       setIsLoading(false);
+      
+      toast({
+        title: "Analysis Complete",
+        description: "Job posting has been analyzed successfully",
+      });
       
     } catch (err) {
       setIsLoading(false);
-      setError((err as Error).message || "Failed to analyze job URL");
+      const errorMessage = (err as Error).message || "Failed to analyze job URL";
+      setError(errorMessage);
       toast({
         title: "Error",
-        description: (err as Error).message || "Failed to analyze job URL",
+        description: errorMessage,
         variant: "destructive",
       });
     }
-  };
-
-  const handleManualEntry = () => {
-    setJobData(null);
-    setAnalysisResult(null);
-    setManualEntry(true);
-    setTimeout(() => {
-      document.getElementById("job-description")?.focus();
-    }, 100);
-  };
-
-  const handleSubmitManual = () => {
-    if (!manualJobData.title || !manualJobData.company || !manualJobData.description) {
-      toast({
-        title: "Error",
-        description: "Please fill in the required fields: Job Title, Company, and Description",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!apiKey) {
-      toast({
-        title: "API Key Required",
-        description: "Please enter your OpenAI API key first",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setJobData(manualJobData);
   };
 
   const handleSaveApiKey = () => {
@@ -197,7 +197,7 @@ const JobLinkValidator = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <LinkIcon size={20} />
-            <span>Paste Job URL</span>
+            <span>Job URL Validation</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -227,6 +227,39 @@ const JobLinkValidator = () => {
               <p className="text-sm text-gray-500">
                 Paste any job posting URL to analyze its legitimacy
               </p>
+              
+              {/* URL Validation Status */}
+              {isValidInput !== null && (
+                <div className={`flex items-center gap-2 p-3 ${isValidInput ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'} rounded-md mt-2`}>
+                  {isValidInput ? (
+                    <CheckCircle size={16} />
+                  ) : (
+                    <AlertCircle size={16} />
+                  )}
+                  <span className="text-sm">
+                    {isValidInput 
+                      ? "Valid URL format" 
+                      : "Invalid URL format. Please enter a complete URL (e.g., https://example.com/jobs/...)"}
+                  </span>
+                </div>
+              )}
+              
+              {/* Job Site Validation Status */}
+              {isValidInput === true && isJobSite !== null && (
+                <div className={`flex items-center gap-2 p-3 ${isJobSite ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'} rounded-md mt-2`}>
+                  {isJobSite ? (
+                    <CheckCircle size={16} />
+                  ) : (
+                    <AlertTriangle size={16} />
+                  )}
+                  <span className="text-sm">
+                    {isJobSite 
+                      ? "Recognized as a job posting URL" 
+                      : "This doesn't appear to be a job posting URL. Analysis may be limited."}
+                  </span>
+                </div>
+              )}
+              
               {!isApiKeySet && (
                 <div className="flex items-center gap-2 p-3 bg-yellow-50 text-yellow-700 rounded-md">
                   <AlertTriangle size={16} />
@@ -241,102 +274,18 @@ const JobLinkValidator = () => {
                 <span className="text-sm">{error}</span>
               </div>
             )}
-
-            <div className="text-center">
-              <span className="text-sm text-gray-500">or</span>
-            </div>
-            
-            <Button variant="outline" onClick={handleManualEntry} className="w-full">
-              Enter Job Details Manually
-            </Button>
           </div>
         </CardContent>
       </Card>
       
       {jobData && analysisResult ? (
-        <JobValidator jobData={{...jobData, analysisResult}} currentUrl={jobUrl} />
+        <JobValidator jobData={jobData} analysisResult={analysisResult} />
       ) : isLoading ? (
         <Card className="mb-6">
           <CardContent className="flex flex-col items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
             <p className="text-center text-gray-500">Analyzing job URL...</p>
             <p className="text-center text-gray-400 text-sm mt-2">This may take a few moments</p>
-          </CardContent>
-        </Card>
-      ) : manualEntry ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Manual Job Entry</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSubmitManual(); }}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="job-title">Job Title <span className="text-red-500">*</span></Label>
-                  <Input 
-                    id="job-title" 
-                    placeholder="e.g., Software Engineer" 
-                    value={manualJobData.title} 
-                    onChange={handleManualInputChange}
-                    required 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="job-company">Company <span className="text-red-500">*</span></Label>
-                  <Input 
-                    id="job-company" 
-                    placeholder="e.g., Example Tech Co" 
-                    value={manualJobData.company} 
-                    onChange={handleManualInputChange}
-                    required 
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="job-location">Location</Label>
-                  <Input 
-                    id="job-location" 
-                    placeholder="e.g., Remote, New York, etc." 
-                    value={manualJobData.location} 
-                    onChange={handleManualInputChange} 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="job-salary">Salary (Optional)</Label>
-                  <Input 
-                    id="job-salary" 
-                    placeholder="e.g., $120,000 - $150,000" 
-                    value={manualJobData.salary} 
-                    onChange={handleManualInputChange} 
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="job-description">Job Description <span className="text-red-500">*</span></Label>
-                <Textarea 
-                  id="job-description" 
-                  placeholder="Paste the job description here..."
-                  rows={6}
-                  value={manualJobData.description}
-                  onChange={handleManualInputChange}
-                  required
-                />
-              </div>
-              <Button 
-                type="submit"
-                disabled={!isApiKeySet}
-              >
-                Analyze Job
-              </Button>
-              
-              {!isApiKeySet && (
-                <div className="flex items-center gap-2 p-3 bg-yellow-50 text-yellow-700 rounded-md">
-                  <AlertTriangle size={16} />
-                  <span className="text-sm">Please add your OpenAI API key first</span>
-                </div>
-              )}
-            </form>
           </CardContent>
         </Card>
       ) : null}
