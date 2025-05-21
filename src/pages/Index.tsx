@@ -1,70 +1,102 @@
 
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import JobValidator from "@/components/JobValidator";
-import EmptyState from "@/components/EmptyState";
-import LoadingState from "@/components/LoadingState";
+import { Link as LinkIcon } from "lucide-react";
+
+interface JobData {
+  title: string;
+  company: string;
+  description: string;
+  location: string;
+  salary?: string;
+  url: string;
+  siteName: string;
+}
 
 const Index = () => {
-  const [jobData, setJobData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [currentUrl, setCurrentUrl] = useState("");
+  const [jobData, setJobData] = useState<JobData | null>(null);
+  const [currentUrl, setCurrentUrl] = useState<string>("");
+  const [isExtension, setIsExtension] = useState<boolean>(false);
 
   useEffect(() => {
-    // Initialize the extension
-    const getCurrentTab = async () => {
-      try {
-        // Get current tab information from Chrome
-        chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-          const currentTab = tabs[0];
-          setCurrentUrl(currentTab.url || "");
+    // Check if we're running in a Chrome extension context
+    const isExtensionEnv = typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.id;
+    setIsExtension(!!isExtensionEnv);
 
-          // Check if we're on a supported job site
-          const isJobSite = isOnSupportedJobSite(currentTab.url || "");
-          
-          if (isJobSite) {
-            // Execute content script to extract job data
-            chrome.tabs.sendMessage(
-              currentTab.id,
-              { action: "extractJobData" },
-              (response) => {
-                if (response && response.success) {
-                  setJobData(response.data);
-                } else {
-                  setJobData(null);
-                }
-                setLoading(false);
-              }
-            );
-          } else {
-            setLoading(false);
+    if (isExtensionEnv) {
+      // Get current tab URL in extension context
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const url = tabs[0]?.url || "";
+        setCurrentUrl(url);
+
+        // Send a message to the content script to extract job data
+        chrome.tabs.sendMessage(
+          tabs[0].id!,
+          { action: "extractJobData" },
+          (response) => {
+            if (response && response.success) {
+              setJobData(response.data);
+            }
           }
-        });
-      } catch (error) {
-        console.error("Error initializing extension:", error);
-        setLoading(false);
-      }
-    };
-
-    getCurrentTab();
+        );
+      });
+    }
   }, []);
 
-  const isOnSupportedJobSite = (url: string): boolean => {
-    return (
-      url.includes("linkedin.com/jobs") ||
-      url.includes("indeed.com/viewjob") ||
-      url.includes("monster.com/job-")
-    );
-  };
-
-  if (loading) {
-    return <LoadingState />;
-  }
-
-  if (!jobData) {
-    return <EmptyState currentUrl={currentUrl} />;
-  }
-
-  return <JobValidator jobData={jobData} currentUrl={currentUrl} />;
+  return (
+    <div className="container mx-auto p-4 max-w-md">
+      {isExtension ? (
+        jobData ? (
+          <JobValidator jobData={jobData} currentUrl={currentUrl} />
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>JobSafe</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-center mb-4">
+                No job posting detected on this page.
+              </p>
+              <p className="text-sm text-gray-500 mb-4">
+                Please navigate to a job posting on LinkedIn, Indeed, or Monster
+                and click the extension icon again.
+              </p>
+              <div className="flex justify-center">
+                <Button asChild variant="outline">
+                  <Link to="/job-validator" className="flex items-center gap-2">
+                    <LinkIcon size={16} />
+                    <span>Validate Job URL</span>
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>JobSafe</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-center mb-4">
+              Not running as a Chrome extension
+            </p>
+            <div className="flex justify-center">
+              <Button asChild>
+                <Link to="/job-validator" className="flex items-center gap-2">
+                  <LinkIcon size={16} />
+                  <span>Validate Job URL</span>
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
 };
 
 export default Index;
