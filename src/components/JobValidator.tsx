@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { analyzeJobPosting } from "@/services/analysisService";
 import { reportJobPosting } from "@/services/reportingService";
 import { toast } from "@/hooks/use-toast";
-import { AlertCircle, CheckCircle, AlertTriangle, Info } from "lucide-react";
+import { AlertCircle, CheckCircle, AlertTriangle, Info, Loader2 } from "lucide-react";
 
 interface JobData {
   title: string;
@@ -28,9 +28,13 @@ const JobValidator = ({ jobData, currentUrl }: JobValidatorProps) => {
   const [redFlags, setRedFlags] = useState<string[]>([]);
   const [analyzing, setAnalyzing] = useState(true);
   const [reported, setReported] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const performAnalysis = async () => {
+      setAnalyzing(true);
+      setError(null);
+      
       try {
         const result = await analyzeJobPosting(jobData);
         setScore(result.score);
@@ -40,9 +44,11 @@ const JobValidator = ({ jobData, currentUrl }: JobValidatorProps) => {
       } catch (error) {
         console.error("Error analyzing job posting:", error);
         setAnalyzing(false);
+        setError((error as Error).message);
+        
         toast({
           title: "Analysis Error",
-          description: "We couldn't analyze this job posting. Please try again.",
+          description: (error as Error).message || "We couldn't analyze this job posting.",
           variant: "destructive",
         });
       }
@@ -81,13 +87,41 @@ const JobValidator = ({ jobData, currentUrl }: JobValidatorProps) => {
     return <AlertCircle className="text-red-500 h-6 w-6" />;
   };
 
+  const retryAnalysis = () => {
+    setAnalyzing(true);
+    setError(null);
+    setTimeout(() => {
+      performAnalysis();
+    }, 100);
+  };
+
+  const performAnalysis = async () => {
+    try {
+      const result = await analyzeJobPosting(jobData);
+      setScore(result.score);
+      setAnalysis(result.analysis);
+      setRedFlags(result.redFlags);
+      setAnalyzing(false);
+    } catch (error) {
+      console.error("Error analyzing job posting:", error);
+      setAnalyzing(false);
+      setError((error as Error).message);
+      
+      toast({
+        title: "Analysis Error",
+        description: (error as Error).message || "We couldn't analyze this job posting.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="p-4 max-w-md mx-auto">
       <Card className="shadow-md">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-xl">Job Safety Analysis</CardTitle>
-            {score !== null && !analyzing && (
+            {score !== null && !analyzing && !error && (
               <Badge variant="outline" className="text-sm">
                 {getScoreIcon(score)}
                 <span className="ml-1">{score}% Safe</span>
@@ -104,7 +138,20 @@ const JobValidator = ({ jobData, currentUrl }: JobValidatorProps) => {
               <div className="text-center text-sm text-gray-500">
                 Analyzing job posting...
               </div>
+              <div className="flex justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
               <Progress value={50} className="h-2" />
+            </div>
+          ) : error ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-md">
+                <AlertCircle size={16} />
+                <span className="text-sm">{error}</span>
+              </div>
+              <div className="flex justify-center">
+                <Button onClick={retryAnalysis}>Retry Analysis</Button>
+              </div>
             </div>
           ) : (
             <>
@@ -121,7 +168,7 @@ const JobValidator = ({ jobData, currentUrl }: JobValidatorProps) => {
                     style={{ width: `${score}%` }}
                   ></div>
                 </div>
-                <div className="mt-1 text-sm text-gray-500">{analysis}</div>
+                <div className="mt-2 text-sm text-gray-700">{analysis}</div>
               </div>
 
               {redFlags.length > 0 && (

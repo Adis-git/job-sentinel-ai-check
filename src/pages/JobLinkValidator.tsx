@@ -7,7 +7,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import JobValidator from "@/components/JobValidator";
 import { toast } from "@/hooks/use-toast";
-import { AlertCircle, Link } from "lucide-react";
+import { AlertCircle, Link, Key } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 const JobLinkValidator = () => {
   const [jobUrl, setJobUrl] = useState<string>("");
@@ -15,6 +24,7 @@ const JobLinkValidator = () => {
   const [jobData, setJobData] = useState<any>(null);
   const [error, setError] = useState<string>("");
   const [manualEntry, setManualEntry] = useState<boolean>(false);
+  const [apiKey, setApiKey] = useState<string>(localStorage.getItem("openai_api_key") || "");
   const [manualJobData, setManualJobData] = useState({
     title: "",
     company: "",
@@ -44,18 +54,20 @@ const JobLinkValidator = () => {
     return "unknown";
   };
 
-  // Function to generate unique-ish score based on URL
-  const generateScore = (url: string) => {
-    // Use the length of the URL to create some variability (60-95 range)
-    const baseScore = 60 + (url.length % 36);
-    return Math.min(95, baseScore); // Cap at 95
-  };
-
   const fetchJobData = async () => {
     if (!jobUrl) {
       toast({
         title: "Error",
         description: "Please enter a job URL",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!apiKey) {
+      toast({
+        title: "API Key Required",
+        description: "Please enter your OpenAI API key first",
         variant: "destructive",
       });
       return;
@@ -68,48 +80,28 @@ const JobLinkValidator = () => {
       // Identify which job site we're dealing with
       const jobSite = getJobSite(jobUrl);
       
-      // Generate a score based on the URL to simulate different results
-      const score = generateScore(jobUrl);
-      const isLegit = score > 75;
+      if (jobSite === "unknown") {
+        setError("Unrecognized job site. We currently support LinkedIn, Indeed, Monster, and Glassdoor.");
+        setIsLoading(false);
+        return;
+      }
       
-      // Simulate API delay
+      // In a real extension, we would use content scripts to extract the job data
+      // For now, we'll simulate fetching from a job site with minimal data
+      const mockJobData = {
+        title: "Software Engineer",
+        company: "Acme Technology",
+        description: "We're seeking a talented Software Engineer to join our team. You'll work on cutting-edge projects using modern technologies. Requirements include 3+ years of experience with React, Node.js, and cloud platforms. Competitive salary and benefits.",
+        location: "Remote",
+        salary: "$120,000 - $160,000"
+      };
+      
+      // In a real scenario, we'd fetch the actual job data here
       setTimeout(() => {
-        // Different mock data based on the job site
-        if (jobSite === "unknown") {
-          setError("Unrecognized job site. We currently support LinkedIn, Indeed, Monster, and Glassdoor.");
-          setIsLoading(false);
-          return;
-        }
-        
-        const mockJobData = {
-          title: jobSite === "linkedin" ? "Software Engineer" :
-                 jobSite === "indeed" ? "Frontend Developer" :
-                 jobSite === "monster" ? "Full Stack Engineer" : 
-                 "Web Developer",
-                 
-          company: jobSite === "linkedin" ? "Tech Innovations Inc." :
-                   jobSite === "indeed" ? "Digital Solutions Corp" :
-                   jobSite === "monster" ? "NextGen Software" : 
-                   "WebCraft Technologies",
-                   
-          description: isLegit ? 
-            "We are seeking an experienced developer to join our team. The ideal candidate will have strong skills in modern web technologies and a passion for creating high-quality software." :
-            "URGENT HIRING! Work from home opportunity with HUGE earning potential!!! Make $$$ in your spare time. No experience needed, training provided. CONTACT US TODAY with your bank details to get started ASAP!!!",
-            
-          location: jobSite === "linkedin" ? "San Francisco, CA (Remote)" :
-                    jobSite === "indeed" ? "New York, NY" :
-                    jobSite === "monster" ? "Remote" : 
-                    "Chicago, IL",
-                    
-          salary: isLegit ?
-                  "$120,000 - $150,000" :
-                  score < 65 ? "UNLIMITED EARNINGS!!!" : "$200,000 - $300,000"
-        };
-        
         setJobData(mockJobData);
         setIsLoading(false);
         setManualEntry(false);
-      }, 1500);
+      }, 1000);
       
     } catch (err) {
       setIsLoading(false);
@@ -140,12 +132,79 @@ const JobLinkValidator = () => {
       return;
     }
     
+    if (!apiKey) {
+      toast({
+        title: "API Key Required",
+        description: "Please enter your OpenAI API key first",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setJobData(manualJobData);
   };
 
+  const handleSaveApiKey = () => {
+    if (!apiKey) {
+      toast({
+        title: "Error",
+        description: "Please enter an API key",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    localStorage.setItem("openai_api_key", apiKey);
+    toast({
+      title: "Success",
+      description: "API key saved successfully",
+    });
+  };
+
+  const isApiKeySet = !!localStorage.getItem("openai_api_key");
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <h1 className="text-3xl font-bold mb-6">Job Link Validator</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold">Job Link Validator</h1>
+        
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline" size="sm" className="flex items-center gap-2">
+              <Key size={16} />
+              {isApiKeySet ? "Update API Key" : "Add API Key"}
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>OpenAI API Key</DialogTitle>
+              <DialogDescription>
+                Enter your OpenAI API key to enable job analysis. Your key is stored locally and never sent to our servers.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="api-key">API Key</Label>
+                <Input
+                  id="api-key"
+                  type="password"
+                  placeholder="sk-..."
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                />
+              </div>
+              <div className="text-sm text-gray-500">
+                Your API key is stored only in your browser's local storage.
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <DialogClose asChild>
+                <Button onClick={handleSaveApiKey}>Save Key</Button>
+              </DialogClose>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
       
       <Card className="mb-6">
         <CardHeader>
@@ -168,7 +227,7 @@ const JobLinkValidator = () => {
                 />
                 <Button 
                   onClick={fetchJobData} 
-                  disabled={isLoading || !jobUrl}
+                  disabled={isLoading || !jobUrl || !isApiKeySet}
                 >
                   {isLoading ? "Loading..." : "Validate"}
                 </Button>
@@ -176,6 +235,12 @@ const JobLinkValidator = () => {
               <p className="text-sm text-gray-500">
                 Paste a LinkedIn, Indeed, Monster, or Glassdoor job posting URL
               </p>
+              {!isApiKeySet && (
+                <div className="flex items-center gap-2 p-3 bg-yellow-50 text-yellow-700 rounded-md">
+                  <AlertTriangle size={16} />
+                  <span className="text-sm">Please add your OpenAI API key first</span>
+                </div>
+              )}
             </div>
             
             {error && (
@@ -258,7 +323,19 @@ const JobLinkValidator = () => {
                   required
                 />
               </div>
-              <Button type="submit">Analyze Job</Button>
+              <Button 
+                type="submit"
+                disabled={!isApiKeySet}
+              >
+                Analyze Job
+              </Button>
+              
+              {!isApiKeySet && (
+                <div className="flex items-center gap-2 p-3 bg-yellow-50 text-yellow-700 rounded-md">
+                  <AlertTriangle size={16} />
+                  <span className="text-sm">Please add your OpenAI API key first</span>
+                </div>
+              )}
             </form>
           </CardContent>
         </Card>

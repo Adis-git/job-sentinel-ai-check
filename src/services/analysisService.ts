@@ -1,6 +1,4 @@
 
-import { mockAnalyzeJobPosting } from "./mockAnalysisService";
-
 interface JobData {
   title: string;
   company: string;
@@ -16,19 +14,18 @@ interface AnalysisResult {
 }
 
 /**
- * Analyzes a job posting to determine its legitimacy.
- * In a real implementation, this would call the OpenAI API.
+ * Analyzes a job posting to determine its legitimacy using OpenAI.
  */
 export const analyzeJobPosting = async (
   jobData: JobData
 ): Promise<AnalysisResult> => {
-  // In a production app, we would integrate with OpenAI API here
-  // For this demo, we'll use a mock implementation
-  return mockAnalyzeJobPosting(jobData);
-
-  // Real implementation would look something like this:
-  /*
   try {
+    const apiKey = localStorage.getItem('openai_api_key');
+    
+    if (!apiKey) {
+      throw new Error("OpenAI API key is required for job analysis");
+    }
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -36,15 +33,29 @@ export const analyzeJobPosting = async (
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: "gpt-4",
+        model: "gpt-4o", // Using GPT-4o for better analysis
         messages: [
           {
             role: "system",
-            content: "You are an AI designed to analyze job postings and detect potential scams or fraudulent listings."
+            content: `You are an AI designed to analyze job postings and detect potential scams or fraudulent listings. 
+            You need to evaluate the job posting and assign a score from 0-100, where 100 is definitely legitimate and 0 is definitely a scam.
+            Look for red flags like:
+            - Requests for payment or financial information
+            - Unrealistic salary promises
+            - Vague job descriptions or titles
+            - Poor grammar or excessive capitalization
+            - Urgency tactics
+            - Missing company information
+            - No specific skill requirements
+            
+            Return ONLY a JSON object with the following properties:
+            - score: number between 0-100
+            - analysis: brief text explaining your evaluation
+            - redFlags: array of strings listing identified red flags (empty array if none found)`
           },
           {
             role: "user",
-            content: `Please analyze this job posting for signs that it might be fake or fraudulent:
+            content: `Please analyze this job posting:
             
             Title: ${jobData.title}
             Company: ${jobData.company}
@@ -52,27 +63,38 @@ export const analyzeJobPosting = async (
             Salary: ${jobData.salary || "Not specified"}
             
             Description:
-            ${jobData.description}
-            
-            Rate this job posting on a scale of 0-100, where 100 is definitely legitimate and 0 is definitely fake.
-            Also provide a brief explanation of your analysis and list any red flags you identified.
-            Format your response as a JSON object with properties: score, analysis, and redFlags.`
+            ${jobData.description}`
           }
-        ]
+        ],
+        temperature: 0.1, // Lower temperature for more deterministic response
+        max_tokens: 1000
       })
     });
 
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "API request failed");
+    }
+
     const data = await response.json();
-    const resultJson = JSON.parse(data.choices[0].message.content);
+    const resultContent = data.choices[0].message.content;
     
+    // Parse the JSON response
+    let result;
+    try {
+      result = JSON.parse(resultContent);
+    } catch (e) {
+      console.error("Failed to parse OpenAI response:", resultContent);
+      throw new Error("Failed to parse analysis results");
+    }
+
     return {
-      score: resultJson.score,
-      analysis: resultJson.analysis,
-      redFlags: resultJson.redFlags
+      score: result.score,
+      analysis: result.analysis,
+      redFlags: result.redFlags || []
     };
   } catch (error) {
     console.error("Error analyzing job with OpenAI:", error);
-    throw new Error("Failed to analyze job posting");
+    throw new Error("Failed to analyze job posting: " + (error as Error).message);
   }
-  */
 };
